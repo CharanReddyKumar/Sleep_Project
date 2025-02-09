@@ -159,7 +159,7 @@ for sid in sids:
 
     # Check if NaNs are only at the start
     if first_non_missing_time is None:
-        only_start_missing = True  # All values are NaN
+        only_start_missing = True  
     else:
         only_start_missing = (sid_data[sid_data["IBI_Missing"]]["TIMESTAMP"] < first_non_missing_time).all()
 
@@ -181,7 +181,7 @@ nan_pattern_df = pd.DataFrame(nan_pattern_results)
 # Display the results
 print(nan_pattern_df)
 # %%[markdown]
-## There is 120960 missing stages nad there is significatly large class imablnce in the data
+# There is 120960 missing stages nad there is significatly large class imablnce in the data
 # %%
 print(combined_data[combined_data["Sleep_Stage"] == "P"]["SID"].value_counts().compute())
 
@@ -219,72 +219,34 @@ plt.title("Sleep Stage Distribution")
 plt.show()
 
 #%%[markdown]
-## Based on the EDA of P and infromation from the https://physionet.org/content/dreamt/1.0.1/ we can assume P is purely prepartional stage and we can drop the rows with P stage(can not assume as wake stage)
+# Based on the EDA of P and infromation from the https://physionet.org/content/dreamt/1.0.1/ we can assume P is purely prepartional stage and we can drop the rows with P stage(can not assume as wake stage)
+#%%
+# Drop rows with "P" sleep stage
+combined_data = combined_data[combined_data["Sleep_Stage"] != "P"]
 #%%
 # Drop unrelavent columns
 columns_to_drop = ["Obstructive_Apnea", "Central_Apnea", "Hypopnea", "Multiple_Events"]
-filtered_data = combined_data.drop(columns=columns_to_drop)
+combined_data = combined_data.drop(columns=columns_to_drop)
 print(filtered_data.columns)
-#%%
-# Should handle IBI missing values
-
 
 #%%
-############ Model to handle missing values of IBI ############
+print(combined_data.isnull().sum().compute())
+#%%[markdown]
+# There is no missing IBI values after droping P stage
 #%%
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-import dask.dataframe as dd
-import pandas as pd
-
+combined_data = combined_data[combined_data["Sleep_Stage"] != "Missing"]
+# %%
+sleep_stage_counts = combined_data["Sleep_Stage"].value_counts().compute()
+print(sleep_stage_counts)
+plt.figure(figsize=(10,6))
+sns.barplot(x=sleep_stage_counts.index, y=sleep_stage_counts.values)
+plt.title("Sleep Stage Distribution")
+plt.show
 
 # %%
-# Data with no missing IBI values
-
-# Get unique SIDs
-sids = combined_data["SID"].unique().compute()
+processed_data = combined_data
+output_file = ("Processed_Data.csv")
+processed_data.to_csv(output_file, single_file=True, index=False)
+print(f"Saved")
 #%%
-# Initialize a list to store processed data
-processed_batches = []
 
-# Batch process each SID
-for sid in sids:
-    print(f"Processing SID: {sid}")
-    
-    # Filter data for the current SID with non-missing IBI
-    sid_data_dask = combined_data[(combined_data["SID"] == sid) & (~combined_data["IBI"].isnull())]
-    
-    # Compute the data for the current SID
-    sid_data = sid_data_dask.compute()
-    
-    # Append the processed batch to the list
-    processed_batches.append(sid_data)
-
-# Combine all processed batches 
-valid_data = pd.concat(processed_batches, ignore_index=True)
-
-# %%
-# Features and target
-X = valid_data[["HR", "BVP", "EDA", "TEMP", "Sleep_Stage"]]
-y = valid_data["IBI"]
-
-# Encode categorical variables (Sleep_Stage)
-X = pd.get_dummies(X, columns=["Sleep_Stage"])
-
-# %%
-# Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Train Decision Tree Regressor
-tree_model = DecisionTreeRegressor(max_depth=10, random_state=42)
-tree_model.fit(X_train, y_train)
-
-# %%
-# Evaluate on test data
-y_pred = tree_model.predict(X_test)
-mse = mean_squared_error(y_test, y_pred)
-print(f"Mean Squared Error on Test Data: {mse:.2f}")
-
-
-# %%
