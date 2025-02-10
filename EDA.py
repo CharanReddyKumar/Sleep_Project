@@ -180,8 +180,7 @@ nan_pattern_df = pd.DataFrame(nan_pattern_results)
 
 # Display the results
 print(nan_pattern_df)
-# %%[markdown]
-# There is 120960 missing stages nad there is significatly large class imablnce in the data
+
 # %%
 print(combined_data[combined_data["Sleep_Stage"] == "P"]["SID"].value_counts().compute())
 
@@ -217,7 +216,8 @@ plt.figure(figsize=(10,6))
 sns.barplot(x=sleep_stage_counts.index, y=sleep_stage_counts.values)
 plt.title("Sleep Stage Distribution")
 plt.show()
-
+# %%[markdown]
+# There is 120960 missing stages nad there is significatly large class imablnce in the data
 #%%[markdown]
 # Based on the EDA of P and infromation from the https://physionet.org/content/dreamt/1.0.1/ we can assume P is purely prepartional stage and we can drop the rows with P stage(can not assume as wake stage)
 #%%
